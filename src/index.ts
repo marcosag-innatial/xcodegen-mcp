@@ -43,7 +43,7 @@ function getProjectDir(): string {
   if (idx !== -1 && process.argv[idx + 1]) {
     return process.argv[idx + 1]!;
   }
-  return process.cwd();
+  return process.env["PROJECT_DIR"] ?? process.cwd();
 }
 
 const hostProjectDir = getProjectDir();
@@ -247,7 +247,8 @@ function createMcpServer(): McpServer {
 
 // --- Start the server ---
 async function main() {
-  const mode = process.argv.includes("--http") ? "http" : "stdio";
+  // Use HTTP mode if --http flag is passed OR if PORT env var is set
+  const mode = process.argv.includes("--http") || process.env["PORT"] ? "http" : "stdio";
 
   if (mode === "http") {
     const port = parseInt(process.env["PORT"] ?? "8080", 10);
