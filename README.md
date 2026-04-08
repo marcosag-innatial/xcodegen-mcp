@@ -9,23 +9,43 @@ An MCP (Model Context Protocol) server that wraps [XcodeGen](https://github.com/
 
 ## Setup with Claude Code
 
-Since this is a private repo, you can run it directly via `npx` with no install step:
+### Option A: Streamable HTTP (recommended for remote use)
+
+Start the server on your Mac:
 
 ```bash
-claude mcp add xcodegen -- npx github:youruser/xcodegen-mcp
+npx github:marcosag-innatial/xcodegen-mcp -- --http
 ```
 
-Or add it manually to `.claude/settings.json`:
+By default it listens on port 8080. Set `PORT` to change it:
+
+```bash
+PORT=3000 npx github:marcosag-innatial/xcodegen-mcp -- --http
+```
+
+Then configure Claude Code to connect:
+
+```bash
+claude mcp add xcodegen --transport http http://localhost:8080/mcp
+```
+
+Or in `.claude/settings.json`:
 
 ```json
 {
   "mcpServers": {
     "xcodegen": {
-      "command": "npx",
-      "args": ["github:marcosag-innatial/xcodegen-mcp"]
+      "type": "streamable-http",
+      "url": "http://localhost:8080/mcp"
     }
   }
 }
+```
+
+### Option B: stdio (local only)
+
+```bash
+claude mcp add xcodegen -- npx github:marcosag-innatial/xcodegen-mcp
 ```
 
 ## Tools
