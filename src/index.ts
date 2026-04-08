@@ -227,6 +227,7 @@ async function main() {
         // New session
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
+          enableJsonResponse: true,
         });
 
         transport.onclose = () => {
@@ -237,12 +238,11 @@ async function main() {
 
         const sessionServer = createMcpServer();
         await sessionServer.connect(transport);
+        await transport.handleRequest(req, res);
 
         if (transport.sessionId) {
           sessions.set(transport.sessionId, transport);
         }
-
-        await transport.handleRequest(req, res);
       } else if (req.method === "GET" && req.url === "/mcp") {
         if (sessionId && sessions.has(sessionId)) {
           const transport = sessions.get(sessionId)!;
