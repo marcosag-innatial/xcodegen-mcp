@@ -22,7 +22,7 @@ Or add it manually to `.claude/settings.json`:
   "mcpServers": {
     "xcodegen": {
       "command": "npx",
-      "args": ["github:youruser/xcodegen-mcp"]
+      "args": ["github:marcosag-innatial/xcodegen-mcp"]
     }
   }
 }
