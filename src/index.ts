@@ -247,8 +247,8 @@ function createMcpServer(): McpServer {
 
 // --- Start the server ---
 async function main() {
-  // Use HTTP mode if --http flag is passed OR if PORT env var is set
-  const mode = process.argv.includes("--http") || process.env["PORT"] ? "http" : "stdio";
+  // Default to HTTP mode. Use --stdio flag to switch to stdio mode.
+  const mode = process.argv.includes("--stdio") ? "stdio" : "http";
 
   if (mode === "http") {
     const port = parseInt(process.env["PORT"] ?? "8080", 10);
