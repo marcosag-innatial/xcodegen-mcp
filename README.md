@@ -9,18 +9,18 @@ An MCP (Model Context Protocol) server that wraps [XcodeGen](https://github.com/
 
 ## Setup with Claude Code
 
-### Option A: Streamable HTTP (recommended for remote use)
+### Option A: Streamable HTTP (recommended for remote/container use)
 
-Start the server on your Mac:
+Start the server on your Mac, pointing it at your project:
 
 ```bash
-npx github:marcosag-innatial/xcodegen-mcp -- --http
+npx github:youruser/xcodegen-mcp -- --http --project-dir /Users/you/Projects/MyApp
 ```
 
 By default it listens on port 8080. Set `PORT` to change it:
 
 ```bash
-PORT=3000 npx github:marcosag-innatial/xcodegen-mcp -- --http
+PORT=3000 npx github:youruser/xcodegen-mcp -- --http --project-dir /Users/you/Projects/MyApp
 ```
 
 Then configure Claude Code to connect:
@@ -45,13 +45,20 @@ Or in `.claude/settings.json`:
 ### Option B: stdio (local only)
 
 ```bash
-claude mcp add xcodegen -- npx github:marcosag-innatial/xcodegen-mcp
+claude mcp add xcodegen -- npx github:youruser/xcodegen-mcp
 ```
+
+## Path handling
+
+When the MCP server runs on a different machine (or the host of a container), the caller may not know the correct host-side paths. Use the `get_host_info` tool to discover the project directory before calling other tools.
+
+The `--project-dir` flag sets the default project directory for all tools. If omitted, it defaults to the server's current working directory.
 
 ## Tools
 
 | Tool | Description |
 |------|-------------|
+| `get_host_info` | Returns the host machine's project directory path. Call this first to discover correct paths. |
 | `generate` | Run `xcodegen generate` to create an Xcode project from a spec |
 | `dump` | Output the fully resolved spec as JSON or YAML |
 | `read_spec` | Read the raw `project.yml` file |

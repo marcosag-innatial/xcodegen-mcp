@@ -22,7 +22,7 @@ async function runXcodegen(
 ): Promise<{ stdout: string; stderr: string }> {
   try {
     const result = await execFileAsync("xcodegen", args, {
-      cwd: cwd ?? process.cwd(),
+      cwd: cwd ?? hostProjectDir,
       maxBuffer: 10 * 1024 * 1024,
       timeout: 120_000,
     });
@@ -34,6 +34,19 @@ async function runXcodegen(
     );
   }
 }
+
+/**
+ * Parse --project-dir from CLI args, falling back to cwd.
+ */
+function getProjectDir(): string {
+  const idx = process.argv.indexOf("--project-dir");
+  if (idx !== -1 && process.argv[idx + 1]) {
+    return process.argv[idx + 1]!;
+  }
+  return process.cwd();
+}
+
+const hostProjectDir = getProjectDir();
 
 /**
  * Creates an McpServer with all xcodegen tools registered.
@@ -48,19 +61,20 @@ function createMcpServer(): McpServer {
     title: "Generate Xcode Project",
     description:
       "Runs `xcodegen generate` to create an Xcode project from a project spec (project.yml). " +
-      "Returns xcodegen's output including any warnings.",
+      "Returns xcodegen's output including any warnings. " +
+      "IMPORTANT: All paths must be absolute paths on the host machine where the MCP server is running (e.g. /Users/you/Projects/MyApp), NOT container or remote paths.",
     inputSchema: {
       specPath: z
         .string()
         .optional()
         .describe(
-          "Path to the project spec file (project.yml). Defaults to 'project.yml' in the project directory."
+          "Absolute host-machine path to the project spec file (project.yml). Defaults to 'project.yml' in the project directory."
         ),
       projectDirectory: z
         .string()
         .optional()
         .describe(
-          "The directory containing the project spec and source files. Defaults to the current working directory."
+          "Absolute host-machine path to the directory containing the project spec and source files. Defaults to the server's working directory."
         ),
       projectName: z
         .string()
@@ -102,16 +116,17 @@ function createMcpServer(): McpServer {
     title: "Dump Resolved Spec",
     description:
       "Runs `xcodegen dump` to output the fully resolved project spec as JSON or YAML. " +
-      "Useful for inspecting how XcodeGen interprets the spec after resolving includes and defaults.",
+      "Useful for inspecting how XcodeGen interprets the spec after resolving includes and defaults. " +
+      "IMPORTANT: All paths must be absolute paths on the host machine where the MCP server is running.",
     inputSchema: {
       specPath: z
         .string()
         .optional()
-        .describe("Path to the project spec file."),
+        .describe("Absolute host-machine path to the project spec file."),
       projectDirectory: z
         .string()
         .optional()
-        .describe("The project directory."),
+        .describe("Absolute host-machine path to the project directory."),
       type: z
         .enum(["json", "yaml", "parsed"])
         .optional()
@@ -133,18 +148,19 @@ function createMcpServer(): McpServer {
     title: "Read Project Spec",
     description:
       "Reads the raw XcodeGen project spec file (project.yml) and returns its contents. " +
-      "Use this to inspect or understand the current project configuration before making changes.",
+      "Use this to inspect or understand the current project configuration before making changes. " +
+      "IMPORTANT: All paths must be absolute paths on the host machine where the MCP server is running.",
     inputSchema: {
       specPath: z
         .string()
         .optional()
         .describe(
-          "Path to the spec file. Defaults to 'project.yml' in the project directory."
+          "Absolute host-machine path to the spec file. Defaults to 'project.yml' in the project directory."
         ),
       projectDirectory: z
         .string()
         .optional()
-        .describe("The project directory. Defaults to cwd."),
+        .describe("Absolute host-machine path to the project directory. Defaults to the server's working directory."),
     },
     annotations: {
       title: "Read Project Spec",
@@ -153,7 +169,7 @@ function createMcpServer(): McpServer {
       openWorldHint: false,
     },
   }, async ({ specPath, projectDirectory }) => {
-    const dir = projectDirectory ?? process.cwd();
+    const dir = projectDirectory ?? hostProjectDir;
     const file = specPath ?? path.join(dir, "project.yml");
     const content = await readFile(file, "utf-8");
     return {
@@ -165,10 +181,11 @@ function createMcpServer(): McpServer {
     title: "Manage XcodeGen Cache",
     description:
       "Runs `xcodegen cache` to write the cache for the current spec. " +
-      "This is useful after generating to speed up future generations.",
+      "This is useful after generating to speed up future generations. " +
+      "IMPORTANT: All paths must be absolute paths on the host machine where the MCP server is running.",
     inputSchema: {
-      specPath: z.string().optional().describe("Path to the project spec file."),
-      projectDirectory: z.string().optional().describe("The project directory."),
+      specPath: z.string().optional().describe("Absolute host-machine path to the project spec file."),
+      projectDirectory: z.string().optional().describe("Absolute host-machine path to the project directory."),
     },
   }, async ({ specPath, projectDirectory }) => {
     const args = ["cache"];
@@ -199,6 +216,29 @@ function createMcpServer(): McpServer {
     const { stdout } = await runXcodegen(["version"]);
     return {
       content: [{ type: "text" as const, text: stdout.trim() }],
+    };
+  });
+
+  server.registerTool("get_host_info", {
+    title: "Get Host Info",
+    description:
+      "Returns the host machine's project directory path. " +
+      "Call this first to discover the correct host-side paths before using other tools. " +
+      "The returned projectDirectory is the root path to use for all other tool calls.",
+    annotations: {
+      title: "Get Host Info",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+  }, async () => {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify({ projectDirectory: hostProjectDir }),
+        },
+      ],
     };
   });
 
